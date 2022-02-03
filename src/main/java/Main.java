@@ -9,10 +9,9 @@ import org.json.simple.parser.ParseException;
 
 
 import javax.security.auth.login.LoginException;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -54,8 +53,20 @@ public class Main extends ListenerAdapter {
     final long MAX = 2147483647;*/
 
     public static void main(String[] args) throws LoginException {
+        String token = null;
+        /*try(FileReader reader = new FileReader("C:\\Users\\Pufferunpopped\\IdeaProjects\\DiscordOmniBot\\src\\main\\resources\\token.txt")) {
+            token = reader.
+        } catch (IOException e) {
+            e.printStackTrace();
+        }*/
+        Path fileName = Path.of("C:\\Users\\Pufferunpopped\\IdeaProjects\\DiscordOmniBot\\src\\main\\resources\\token.txt");
         try {
-            JDA jda = JDABuilder.createDefault("OTE4MzY5MTQzNDQ1NjU1NTcz.YbGP6g.7cbG34c_HpRuYCcDW2bJGOgWpok") // The token of the account that is logging in.
+            token = Files.readString(fileName);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            JDA jda = JDABuilder.createDefault(token) // The token of the account that is logging in.
                     .addEventListeners(new Main())   // An instance of a class that will handle events.
                     .build();
             jda.awaitReady(); // Blocking guarantees that JDA will be completely loaded.
@@ -80,6 +91,12 @@ public class Main extends ListenerAdapter {
         User author = event.getAuthor();  // user that sent message
 
         String msg = message.getContentDisplay(); // returns a string of text similar to client view
+
+        if (msg.startsWith("**")) {
+            msg = msg.substring(2);
+            int index = msg.indexOf("**");
+            msg = msg.substring(index + 3);
+        }
 
         boolean bot = author.isBot(); //determine if from a bot
         if (event.isFromType(ChannelType.TEXT)) {
@@ -115,128 +132,135 @@ public class Main extends ListenerAdapter {
             jda.shutdown();
             jda.shutdownNow();
         } else if (msg.startsWith("{recipe")){
-            String processMsg = msg;
-            processMsg.trim(); processMsg = processMsg.substring(8); // removes {recipe
-            String[] extractTime = processMsg.split("%");
-            String[] splitEuTime = extractTime[0].split(":");
-            int time = Integer.parseInt(splitEuTime[0]);
-            long euTick = Long.parseLong(splitEuTime[1]);
-            String machine = splitEuTime[2];
-            String[] list = extractTime[1].split(" ", 0);
-            System.out.println(extractTime[1]);
-            String[][] data = new String[list.length][3];
-            byte m = 0;
-            for (String chunks:
-                 list) {
-                data[m] = chunks.split(":");
-                ++m;
-
-            }
-            for (String[] items :
-                    data) {
+            try {
+                String processMsg = msg;
+                processMsg.trim();
+                processMsg = processMsg.substring(8); // removes {recipe
+                String[] extractTime = processMsg.split("%");
+                String[] splitEuTime = extractTime[0].split(":");
+                int time = Integer.parseInt(splitEuTime[0]);
+                long euTick = Long.parseLong(splitEuTime[1]);
+                String machine = splitEuTime[2];
+                String[] list = extractTime[1].split(" ", 0);
+                System.out.println(extractTime[1]);
+                String[][] data = new String[list.length][3];
+                byte m = 0;
                 for (String chunks :
-                        items) {
-                    chunks.trim();
-                    System.out.println(chunks);
-                }
-            }
+                        list) {
+                    data[m] = chunks.split(":");
+                    ++m;
 
-            System.out.println(data[1][1]);
-            try (FileReader reader = new FileReader("C:\\Users\\Pufferunpopped\\IdeaProjects\\DiscordOmniBot\\src\\main\\resources\\recipes.json")) {
-                byte outputCounter = 0;
+                }
                 for (String[] items :
                         data) {
-                    System.out.println(items[1]);
-                    if (items[1].equals("O")) {
-                        outputCounter++;
+                    for (String chunks :
+                            items) {
+                        chunks.trim();
+                        System.out.println(chunks);
                     }
                 }
-                String[][] outputs = new String[outputCounter][3];
-                String[][] ingredients = new String[data.length - outputCounter][3];
-                m = 0;
-                byte n = 0;
-                for (String[] datum : data) { // separate data into inputs and outputs
-                    if (datum[1].equals("O")) {
-                        outputs[m] = datum;
-                        m++;
-                    } else {
-                        ingredients[n] = datum;
-                        n++;
-                    }
-                }
-                Object obj = jsonParser.parse(reader);
-                JSONObject recipeList = (JSONObject) obj;
-                boolean recipeAlreadyExists = false;
-                try {
 
-                    for (String[] items:
-                         outputs) {
-                        System.out.println(recipeList.get(items[0]));
-                        if (recipeList.get(items[0]) != null) {
-                            recipeAlreadyExists = true;
-
-                            channel.sendMessage("Recipe already exists: " + items[0]).queue();
-                        }
-                    }
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                if (!recipeAlreadyExists) {
+                System.out.println(data[1][1]);
+                try (FileReader reader = new FileReader("C:\\Users\\Pufferunpopped\\IdeaProjects\\DiscordOmniBot\\src\\main\\resources\\recipes.json")) {
+                    byte outputCounter = 0;
                     for (String[] items :
-                            outputs) {
-                        System.out.println(items[0]);
-                        recipeList.put(items[0], outputs[0][0] + ".json");
-                        System.out.println(recipeList.get(items[0]));
-                    }
-
-                    try (FileWriter fileWriter = new FileWriter("C:\\Users\\Pufferunpopped\\IdeaProjects\\DiscordOmniBot\\src\\main\\resources\\recipes.json")) {
-                        fileWriter.write(recipeList.toJSONString());
-                        fileWriter.flush();
-                        for (String[] output :
-                        outputs){
-                            channel.sendMessage("created recipe for " + output[0]).queue();
-
+                            data) {
+                        System.out.println(items[1]);
+                        if (items[1].equals("O")) {
+                            outputCounter++;
                         }
-                    } catch (IOException e) {
+                    }
+                    String[][] outputs = new String[outputCounter][3];
+                    String[][] ingredients = new String[data.length - outputCounter][3];
+                    m = 0;
+                    byte n = 0;
+                    for (String[] datum : data) { // separate data into inputs and outputs
+                        if (datum[1].equals("O")) {
+                            outputs[m] = datum;
+                            m++;
+                        } else {
+                            ingredients[n] = datum;
+                            n++;
+                        }
+                    }
+                    Object obj = jsonParser.parse(reader);
+                    JSONObject recipeList = (JSONObject) obj;
+                    boolean recipeAlreadyExists = false;
+                    try {
+
+                        for (String[] items :
+                                outputs) {
+                            System.out.println(recipeList.get(items[0]));
+                            if (recipeList.get(items[0]) != null) {
+                                recipeAlreadyExists = true;
+
+                                channel.sendMessage("Recipe already exists: " + items[0]).queue();
+                            }
+                        }
+
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
-                     // organize data into json
-                    JSONObject outputObj = new JSONObject();
-                    JSONArray inputsList = new JSONArray();
+                    if (!recipeAlreadyExists) {
+                        for (String[] items :
+                                outputs) {
+                            System.out.println(items[0]);
+                            recipeList.put(items[0], outputs[0][0] + ".json");
+                            System.out.println(recipeList.get(items[0]));
+                        }
 
-                    for (String[] items : // create array of json objects of each ingredient formatted as {name, type, count} per element
-                            ingredients) {
-                        JSONObject ingredient = new JSONObject();
-                        ingredient.put("name", items[0]);
-                        ingredient.put("type", items[2]);
-                        ingredient.put("count", Integer.parseInt(items[3]));
-                        inputsList.add(ingredient);
-                    }
-                    JSONArray outputsList = new JSONArray();
-                    for (String[] items : // same thing but with outputs
-                            outputs) {
-                        JSONObject product = new JSONObject();
-                        product.put("name", items[0]);
-                        product.put("type", items[2]);
-                        product.put("count", Integer.parseInt(items[3]));
-                        outputsList.add(product);
-                    }
-                    outputObj.put("inputs", inputsList);// place arrays into attributes named inputs and outputs
-                    outputObj.put("outputs", outputsList);
-                    outputObj.put("time",time);
-                    outputObj.put("energy", euTick);
-                    outputObj.put("machine", machine);
+                        try (FileWriter fileWriter = new FileWriter("C:\\Users\\Pufferunpopped\\IdeaProjects\\DiscordOmniBot\\src\\main\\resources\\recipes.json")) {
+                            fileWriter.write(recipeList.toJSONString());
+                            fileWriter.flush();
+                            for (String[] output :
+                                    outputs) {
+                                channel.sendMessage("created recipe for " + output[0]).queue();
 
-                    String recipeData = outputObj.toJSONString();
-                    try (FileWriter writer = new FileWriter("C:\\Users\\Pufferunpopped\\IdeaProjects\\DiscordOmniBot\\src\\main\\resources\\" + outputs[0][0] + ".json")) {
-                        writer.write(recipeData);
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        // organize data into json
+                        JSONObject outputObj = new JSONObject();
+                        JSONArray inputsList = new JSONArray();
+
+                        for (String[] items : // create array of json objects of each ingredient formatted as {name, type, count} per element
+                                ingredients) {
+                            JSONObject ingredient = new JSONObject();
+                            ingredient.put("name", items[0]);
+                            ingredient.put("type", items[2]);
+                            ingredient.put("count", Integer.parseInt(items[3]));
+                            inputsList.add(ingredient);
+                        }
+                        JSONArray outputsList = new JSONArray();
+                        for (String[] items : // same thing but with outputs
+                                outputs) {
+                            JSONObject product = new JSONObject();
+                            product.put("name", items[0]);
+                            product.put("type", items[2]);
+                            product.put("count", Integer.parseInt(items[3]));
+                            outputsList.add(product);
+                        }
+                        outputObj.put("inputs", inputsList);// place arrays into attributes named inputs and outputs
+                        outputObj.put("outputs", outputsList);
+                        outputObj.put("time", time);
+                        outputObj.put("energy", euTick);
+                        outputObj.put("machine", machine);
+
+                        String recipeData = outputObj.toJSONString();
+                        try (FileWriter writer = new FileWriter("C:\\Users\\Pufferunpopped\\IdeaProjects\\DiscordOmniBot\\src\\main\\resources\\" + outputs[0][0] + ".json")) {
+                            writer.write(recipeData);
+                        }
                     }
+
+
+                } catch (IOException | ParseException e) {
+                    e.printStackTrace();
                 }
-
-
-            } catch (IOException | ParseException e) {
+            } catch (NumberFormatException e) {
                 e.printStackTrace();
+            } catch (StringIndexOutOfBoundsException e) {
+                channel.sendMessage("data is missing").queue();
             }
         } else if (msg.startsWith("{check")) {
             String inputMessage = msg.substring(7).trim();
@@ -273,8 +297,14 @@ public class Main extends ListenerAdapter {
                     channel.sendMessage("an error has occurred?").queue();
                 } else {
                     Iterator[] iterators = new Iterator[]{baseMaterialsList[0].iterator(), baseMaterialsList[1].iterator()};
+                    String buffer = "";
                     while (iterators[0].hasNext()) {
-                        channel.sendMessage(iterators[0].next() + " : " + iterators[1].next()).queue();
+                        buffer += "" + iterators[0].next() + " : " + iterators[1].next() + "\n";
+                        //channel.sendMessage(iterators[0].next() + " : " + iterators[1].next()).queue();
+                    }
+                    try {
+                    channel.sendMessage(buffer).queue();} catch (Exception e) {
+                        e.printStackTrace();
                     }
                 }
 
@@ -305,6 +335,29 @@ public class Main extends ListenerAdapter {
                 }
             }
 
+        } else if (msg.startsWith("{delete")) {
+            String inputMessage = msg.substring(8);
+            try (FileReader file = new FileReader("C:\\Users\\Pufferunpopped\\IdeaProjects\\DiscordOmniBot\\src\\main\\resources\\recipes.json")){
+                Object obj = jsonParser.parse(file);
+                JSONObject json = (JSONObject) obj;
+                if (json.get(inputMessage) == null) {
+                    channel.sendMessage("no such recipe exists").queue();
+                } else {
+                    try (FileWriter writer = new FileWriter("C:\\Users\\Pufferunpopped\\IdeaProjects\\DiscordOmniBot\\src\\main\\resources\\recipes.json")) {
+                        File deletos = new File("C:\\Users\\Pufferunpopped\\IdeaProjects\\DiscordOmniBot\\src\\main\\resources\\" + json.get(inputMessage));
+                        if (deletos.delete()) {
+                            channel.sendMessage("file successfuly deleted").queue();
+                        } else {
+                            channel.sendMessage("Failed to delete file").queue();
+                        }
+                        json.remove(inputMessage);
+                        writer.write(json.toJSONString());
+                    }
+                }
+
+            } catch (IOException | ParseException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -405,7 +458,7 @@ public class Main extends ListenerAdapter {
     public static Iterator[] recurseMaterials(String name, int count, JSONObject recipesJson) {
         ArrayList[] materialsList = {new ArrayList<String>(), new ArrayList<Integer>()};
 
-        try (FileReader reader = new FileReader("C:\\Users\\Pufferunpopped\\IdeaProjects\\DiscordOmniBot\\src\\main\\resources" + recipesJson.get(name))){
+        try (FileReader reader = new FileReader("C:\\Users\\Pufferunpopped\\IdeaProjects\\DiscordOmniBot\\src\\main\\resources\\" + recipesJson.get(name))){
             JSONParser parser = new JSONParser();
             Object obj = parser.parse(reader);
             JSONObject json = (JSONObject) obj;
@@ -542,9 +595,9 @@ public class Main extends ListenerAdapter {
                 machineList[0].add(amountCanOverclock);
                 machineList[1].add(curTier);
             }
-            machineList[0].add(amountCanOverclock % 4); // the stuff that can no longer overclock
+            machineList[0].add((int)Math.ceil(amountCanOverclock % 2.8f)); // the stuff that can no longer overclock
             machineList[1].add(curTier);
-            amountCanOverclock /= 4;  // integer divide by for so extra stuff is lost
+            amountCanOverclock = (int) Math.floor(amountCanOverclock / 2.8f);  // integer divide by for so extra stuff is lost
             curTier = findTier(curTier.getLevel() + 1); // increase tier by 1
         } while (amountCanOverclock > 0);
         return machineList;
@@ -566,16 +619,38 @@ public class Main extends ListenerAdapter {
     }
     static Tier findTier(String target) {
         Tier tier;
-        if      (target.equals("ULV")) tier = Tier.ULV;
-        else if (target.equals("LV"))  tier = Tier.LV;
-        else if (target.equals("MV"))  tier = Tier.MV;
-        else if (target.equals("HV"))  tier = Tier.HV;
-        else if (target.equals("EV"))  tier = Tier.EV;
-        else if (target.equals("IV"))  tier = Tier.IV;
-        else if (target.equals("LUV")) tier = Tier.LUV;
-        else if (target.equals("ZPM")) tier = Tier.ZPM;
-        else if (target.equals("UV"))  tier = Tier.UV;
-        else                           tier = Tier.MAX;
+        switch (target) {
+            case "ULV":
+                tier = Tier.ULV;
+                break;
+            case "LV":
+                tier = Tier.LV;
+                break;
+            case "MV":
+                tier = Tier.MV;
+                break;
+            case "HV":
+                tier = Tier.HV;
+                break;
+            case "EV":
+                tier = Tier.EV;
+                break;
+            case "IV":
+                tier = Tier.IV;
+                break;
+            case "LUV":
+                tier = Tier.LUV;
+                break;
+            case "ZPM":
+                tier = Tier.ZPM;
+                break;
+            case "UV":
+                tier = Tier.UV;
+                break;
+            default:
+                tier = Tier.MAX;
+                break;
+        }
         return tier;
     }
 
